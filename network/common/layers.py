@@ -30,7 +30,7 @@ class Affine:    # 일반적인 y = xw + b 네트워크
         return dx
 
 
-class Relu:
+class ReLU:
     def __init__(self):
         self.mask = None
 

@@ -13,8 +13,16 @@ hyper_params = {
     "batch_size": 256,
     "learning_rate": 1e-2,
 }
-
+9
 def train(hyper_params):
+    # net = Network(layers=[
+    #     Affine(28*28, 128),
+    #     ReLU(),
+    #     Affine(128, 64),
+    #     ReLU(),
+    #     Affine(64, 10),
+    # ])
+
     network = FCNetwork(input_size=784, hidden_size_list=[128, 64], output_size=10)
     trainer = Trainer(network, x_train, t_train, x_test, t_test,
                       epochs=hyper_params['epochs'], batch_size=hyper_params['batch_size'],
