@@ -1,52 +1,34 @@
+from network.common.functions import *
 import numpy as np
-import network.common.initialization as init
-from network.common.functions import sigmoid, softmax, cross_entropy_error
 
-
-class Affine:
-    def __init__(self, in_size, out_size):
-        self.in_size = in_size
-        self.out_size = out_size
-
-        self.weight = np.zeros(in_size, out_size)
-        self.bias = np.zeros(out_size)
+class Affine:    # 일반적인 y = xw + b 네트워크
+    def __init__(self, W, b):
+        self.W = W
+        self.b = b
 
         self.x = None
-        self.original_x_shape = None  # for handling tensors
+        self.original_x_shape = None # for handling tensors
 
-        self.d_weight = None
-        self.d_bias = None
+        self.dW = None
+        self.db = None
 
-        self.init_params()
-
-    def init_params(self, distrib='kaiming'):
-        fan_in, fan_out = init.calculate_fans(self.weight.shape)
-        if distrib.lower() in ['kaiming']:
-            scale = np.sqrt(2.0 / fan_in) # He 분포
-        elif distrib.lower() in ['xavier']:
-            scale = np.sqrt(1.0 / fan_in) # Xavier 분포
-        else:
-            scale = 0.01
-
-        self.weight = scale * np.random.randn(*self.weight.shape)
-        self.bias = np.zeros(*self.bias.shape) # TODO 나중을 위해 일단 둠
-
-    def forward(self, x):  # 계산한 결과를 return(순전파)
+    def forward(self, x):   # 계산한 결과를 return(순전파)
         # tensor 대응
         self.original_x_shape = x.shape
-        x = x.reshape(x.shape[0], -1)  # flatten except for batch dimension
+        x = x.reshape(x.shape[0], -1) # flatten except for batch dimension
         self.x = x
 
-        y = np.dot(x, self.weight) + self.bias
+        y = np.dot(x, self.W) + self.b
         return y
 
     def backward(self, d_out):  # 위 층으로부터 온 기울기를 받아서 다시 x에 대한 기울기를 return
-        self.d_weight = np.dot(self.x.T, d_out)   # Affine layer의 가중치 기울기
-        self.d_bias = np.sum(d_out, axis=0)     # Affine layer의 편향 기울기
+        self.dW = np.dot(self.x.T, d_out)   # Affine layer의 가중치 기울기
+        self.db = np.sum(d_out, axis=0)     # Affine layer의 편향 기울기
 
-        dx = np.dot(d_out, self.d_weight.T)
+        dx = np.dot(d_out, self.W.T)
         dx = dx.reshape(*self.original_x_shape) # tensor 대응
         return dx
+
 
 class ReLU:
     def __init__(self):
@@ -60,8 +42,9 @@ class ReLU:
 
     def backward(self, d_out):  # relu 역전파
         d_out[self.mask] = 0    # x가 0보다 작으면 0, 0이상이면 1*d_out
-        d_x = d_out
-        return d_x
+        dx = d_out
+        return dx
+
 
 class Sigmoid:
     def __init__(self):
@@ -73,6 +56,7 @@ class Sigmoid:
 
     def backward(self, d_out):  # sigmoid 역전파
         return self.out * (1 - self.out) * d_out    # sigmoid 미분한 식은 (1 - a) * a, a는 sigmoid(x)값
+
 
 class SoftmaxWithLoss:  # 항등함수는 오차제곱합을 손실함수로, softmax는 cross_entropy를 손실함수로 사용
     def __init__(self):
@@ -92,42 +76,21 @@ class SoftmaxWithLoss:  # 항등함수는 오차제곱합을 손실함수로, so
         if self.t.size == self.y.size: # ont-hot label
             return (d_out * (self.y - self.t)) / batch_size
         else:
-            d_x = self.y.copy()
-            d_x[np.arange(batch_size), self.t] -= 1 # 정답인 위치마다 1(=t의 value)만큼 빼줌
-            return d_x / batch_size
-
-class Dropout:
-    def __init__(self, dropout_ratio=0.5):
-        self.dropout_ratio = dropout_ratio
-        self.mask = None
-
-    def forward(self, x, train_flag=True):
-        if train_flag:
-            # 학습 시에는 dropout_ratio만큼 뉴런을 off
-            # rand: [0, 1)에서 uniformly / randn: N(0, 1)에서
-
-            # mask: x.shape과 같은 T/F array
-            self.mask = np.random.rand(*x.shape) > self.dropout_ratio
-            return x * self.mask
-        else:
-            # 학습 시에 dout_ratio만큼 꺼져 있었다는 것을 보정해주기 위해, 값을 scaling
-            return x * (1.0 - self.dropout_ratio)
-
-    def backward(self, d_out):
-        # 꺼진 node는 전파하지 않고, 켜져있던 node는 그대로 전파
-        return d_out * self.mask
+            dx = self.y.copy()
+            dx[np.arange(batch_size), self.t] -= 1 # 정답인 위치마다 1(=t의 value)만큼 빼줌
+            return dx / batch_size
 
 class BatchNormalization:
     """
     http://arxiv.org/abs/1502.03167
     """
-    def __init__(self, input_shape, gamma=1.0, beta=0.0, momentum=0.1, running_mean=None, running_var=None):
+    def __init__(self, gamma, beta, momentum=0.1, running_mean=None, running_var=None):
         # parameters
         self.gamma = gamma
         self.beta = beta
 
         self.momentum = momentum
-        self.single_input_shape = input_shape[1:] # conv는 4차원, fc는 2차원 -> 각각 batch 떼고 shape 저장
+        self.input_shape = None # conv는 4차원, fc는 2차원
 
         # test 단계에서 사용되는 변수
         # test 시에는, input으로 들어온 평균과 분산 대신, 학습 단계에서 사용한 지표들의 이동평균을 이용하여 정규화
@@ -142,16 +105,14 @@ class BatchNormalization:
         self.d_beta = None
 
     def forward(self, x, train_flag=True):
-        if self.single_input_shape != x.shape[1:]:
-            raise ValueError("Shape of x must be the same as the shape set in constructor")
+        self.input_shape = x.shape
 
         if x.ndim != 2: # conv layer input
             N, C, H, W = x.shape
-            self.batch_size = N
             x = x.reshape(N, -1) # flatten
 
         out = self.__forward(x, train_flag) # __는 python에서 method를 private하게 만듦
-        return out.reshape(self.batch_size, *self.single_input_shape)
+        return out.reshape(*self.input_shape)
 
     def __forward(self, x, train_flag):
         # x: flattened array (N, D)
@@ -167,6 +128,7 @@ class BatchNormalization:
             std = np.sqrt(var + 10e-7) # division error 방지를 위한 delta
             xn = xc / std # 정규화
 
+            self.batch_size = x.shape[0]
             self.xc = xc
             self.xn = xn
             self.std = std
@@ -192,7 +154,7 @@ class BatchNormalization:
 
         dx = self.__backward(d_out)
 
-        return dx.reshape(self.batch_size, *self.single_input_shape)
+        return dx.reshape(*self.input_shape)
 
     def __backward(self, d_out):
         # 논문에 있는거 그냥 거의 배껴옴
@@ -216,6 +178,3 @@ class BatchNormalization:
 
         # backward pass용
         return d_x
-
-class Convolution:
-    pass # TODO

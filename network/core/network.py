@@ -7,7 +7,6 @@ class Network:
         self.loss_layer = None
 
 
-
     def eval(self):
         pass
 

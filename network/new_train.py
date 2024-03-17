@@ -17,7 +17,9 @@ hyper_params = {
 def train(hyper_params):
     # net = Network(layers=[
     #     Affine(28*28, 128),
+    #     BatchNormalization(),
     #     ReLU(),
+    #     Dropout(),
     #     Affine(128, 64),
     #     ReLU(),
     #     Affine(64, 10),

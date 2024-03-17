@@ -2,8 +2,8 @@ from collections import OrderedDict
 
 import numpy as np
 
-from common.gradient import numerical_gradient
-from common.layers import Sigmoid, Relu, Affine, SoftmaxWithLoss
+from network.common.gradient import numerical_gradient
+from network.common.layers_old import Sigmoid, ReLU, Affine, SoftmaxWithLoss
 
 
 class FCNetwork:
@@ -35,7 +35,7 @@ class FCNetwork:
             self.params[f'b{idx}'] = np.zeros(all_sizes[idx])
 
     def build_layers(self, activation, loss):
-        activations = { 'sigmoid': Sigmoid, 'relu': Relu }
+        activations = { 'sigmoid': Sigmoid, 'relu': ReLU }
         self.layers = OrderedDict()
 
         # hidden layers
