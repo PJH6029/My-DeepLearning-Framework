@@ -2,11 +2,11 @@ from collections import OrderedDict
 
 import numpy as np
 
-from network.common.gradient import numerical_gradient
-from network.common.layers import Sigmoid, Relu, Affine, SoftmaxWithLoss
+from common.gradient import numerical_gradient
+from common.layers import Sigmoid, Relu, Affine, SoftmaxWithLoss
 
 
-class Network:
+class FCNetwork:
     def __init__(self, input_size, hidden_size_list, output_size,
                  activation='relu', loss='softmax'):
         self.params = {}

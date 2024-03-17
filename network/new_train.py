@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from dataset.mnist import load_mnist
 from network.common.trainer import Trainer
-from network.core.network import Network
+from network.core.fc_network import FCNetwork
 
 # 데이터들 불러옴
 (x_train, t_train), (x_test, t_test) = load_mnist(flatten=True, normalize=True, one_hot_label=True)
@@ -15,7 +15,7 @@ hyper_params = {
 }
 
 def train(hyper_params):
-    network = Network(input_size=784, hidden_size_list=[128, 64], output_size=10)
+    network = FCNetwork(input_size=784, hidden_size_list=[128, 64], output_size=10)
     trainer = Trainer(network, x_train, t_train, x_test, t_test,
                       epochs=hyper_params['epochs'], batch_size=hyper_params['batch_size'],
                       optimizer='sgd', optimizer_params={'lr': hyper_params['learning_rate']})
