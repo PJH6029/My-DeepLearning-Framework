@@ -54,7 +54,7 @@ class Trainer:
         t_batch = self.t_train[batch_mask]
 
         grads = self.network.gradient(x_batch, t_batch)
-        self.optimizer.update(self.network.params, grads)
+        self.optimizer.update(self.network, grads)
 
         loss = self.network.loss(x_batch, t_batch)
         self.train_loss_list.append(loss)

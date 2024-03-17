@@ -8,9 +8,13 @@ class Optimizer:
         pass
 
 class SGD(Optimizer):
-    def update(self, params, grads):
-        for key in params.keys():
-            params[key] -= self.lr * grads[key]
+    def update(self, network, grads):
+        for layer_key in grads:
+            grad = grads[layer_key]
+            for grad_key in grad:
+                val = getattr(network.layers[layer_key], grad_key)
+                setattr(network.layers[layer_key], grad_key, val - self.lr * grad[grad_key])
+                # network.layers[layer_key][grad_key] -= self.lr * grad[grad_key]
 
 class Momentum(Optimizer):
     pass

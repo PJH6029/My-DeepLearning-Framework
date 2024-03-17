@@ -8,7 +8,7 @@ class Affine:
         self.in_size = in_size
         self.out_size = out_size
 
-        self.weight = np.zeros(in_size, out_size)
+        self.weight = np.zeros((in_size, out_size))
         self.bias = np.zeros(out_size)
 
         self.x = None
@@ -44,9 +44,9 @@ class Affine:
         self.d_weight = np.dot(self.x.T, d_out)   # Affine layer의 가중치 기울기
         self.d_bias = np.sum(d_out, axis=0)     # Affine layer의 편향 기울기
 
-        dx = np.dot(d_out, self.d_weight.T)
-        dx = dx.reshape(*self.original_x_shape) # tensor 대응
-        return dx
+        d_x = np.dot(d_out, self.d_weight.T)
+        d_x = d_x.reshape(*self.original_x_shape) # tensor 대응
+        return d_x
 
 class ReLU:
     def __init__(self):
@@ -121,13 +121,13 @@ class BatchNormalization:
     """
     http://arxiv.org/abs/1502.03167
     """
-    def __init__(self, input_shape, gamma=1.0, beta=0.0, momentum=0.1, running_mean=None, running_var=None):
+    def __init__(self, gamma=1.0, beta=0.0, momentum=0.1, running_mean=None, running_var=None):
         # parameters
         self.gamma = gamma
         self.beta = beta
 
         self.momentum = momentum
-        self.single_input_shape = input_shape[1:] # conv는 4차원, fc는 2차원 -> 각각 batch 떼고 shape 저장
+        self.input_shape = None # conv는 4차원, fc는 2차원
 
         # test 단계에서 사용되는 변수
         # test 시에는, input으로 들어온 평균과 분산 대신, 학습 단계에서 사용한 지표들의 이동평균을 이용하여 정규화
@@ -142,16 +142,14 @@ class BatchNormalization:
         self.d_beta = None
 
     def forward(self, x, train_flag=True):
-        if self.single_input_shape != x.shape[1:]:
-            raise ValueError("Shape of x must be the same as the shape set in constructor")
+        self.input_shape = x.shape
 
         if x.ndim != 2: # conv layer input
             N, C, H, W = x.shape
-            self.batch_size = N
             x = x.reshape(N, -1) # flatten
 
         out = self.__forward(x, train_flag) # __는 python에서 method를 private하게 만듦
-        return out.reshape(self.batch_size, *self.single_input_shape)
+        return out.reshape(*self.input_shape)
 
     def __forward(self, x, train_flag):
         # x: flattened array (N, D)
@@ -167,6 +165,7 @@ class BatchNormalization:
             std = np.sqrt(var + 10e-7) # division error 방지를 위한 delta
             xn = xc / std # 정규화
 
+            self.batch_size = x.shape[0]
             self.xc = xc
             self.xn = xn
             self.std = std
@@ -190,9 +189,9 @@ class BatchNormalization:
             N, C, H, W = d_out.shape
             d_out = d_out.reshape(N, -1)
 
-        dx = self.__backward(d_out)
+        d_x = self.__backward(d_out)
 
-        return dx.reshape(self.batch_size, *self.single_input_shape)
+        return d_x.reshape(*self.input_shape)
 
     def __backward(self, d_out):
         # 논문에 있는거 그냥 거의 배껴옴
